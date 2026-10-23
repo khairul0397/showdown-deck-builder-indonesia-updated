@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Showdown - Card Catalog & Deck Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#fdf4f6',
+                            100: '#fbe8ed',
+                            500: '#e11d48',
+                            600: '#be123c',
+                            700: '#9f1239',
+                            900: '#881337',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .glass-panel { background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .card-hover { transition: all 0.2s ease-in-out; }
+        .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(225, 29, 72, 0.2); }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-rose-500 selection:text-white">
+
+    <!-- Header / Navigation -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-4 lg:px-8 py-4">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 flex items-center justify-center shadow-lg shadow-rose-500/30">
+                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-200 to-rose-400 bg-clip-text text-transparent">Showdown Deck Architect</h1>
+                    <p class="text-xs text-slate-400">Katalog Kartu & Simulasi Deck Resmi</p>
+                </div>
+            </div>
+
+            <!-- Navigation Tabs -->
+            <div class="flex bg-slate-900/90 p-1.5 rounded-xl border border-slate-800 shadow-inner">
+                <button onclick="switchTab('catalog')" id="tab-catalog" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all bg-rose-600 text-white shadow-md">
+                    📚 Katalog Kartu
+                </button>
+                <button onclick="switchTab('builder')" id="tab-builder" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-white">
+                    🛠️ Pembangun Deck (<span id="deck-count-badge">0</span>/30)
+                </button>
+                <button onclick="switchTab('glossary')" id="tab-glossary" class="px-5 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-white">
+                    📖 Glosarium Kata
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 lg:p-8">
+
+        <!-- ================= CATALOG VIEW ================= -->
+        <section id="view-catalog" class="space-y-6">
+            <!-- Filters & Search Bar -->
+            <div class="glass-panel p-4 lg:p-6 rounded-2xl flex flex-col md:flex-row gap-4 items-center justify-between">
+                <div class="w-full md:w-96 relative">
+                    <span class="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                    </span>
+                    <input type="text" id="search-input" oninput="filterCards()" placeholder="Cari nama kartu atau efek..." 
+                        class="w-full bg-slate-900/80 border border-slate-700/80 rounded-xl pl-10 pr-4 py-2.5 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-rose-500 transition-all">
+                </div>
+
+                <div class="flex flex-wrap gap-2 w-full md:w-auto items-center justify-start md:justify-end">
+                    <button onclick="filterByClass('All')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white transition-all" data-class="All">Semua</button>
+                    <button onclick="filterByClass('Bureaucrat')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all" data-class="Bureaucrat">Bureaucrat</button>
+                    <button onclick="filterByClass('Cheater')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all" data-class="Cheater">Cheater</button>
+                    <button onclick="filterByClass('Gambler')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all" data-class="Gambler">Gambler</button>
+                    <button onclick="filterByClass('Inventor')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all" data-class="Inventor">Inventor</button>
+                    <button onclick="filterByClass('Protector')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all" data-class="Protector">Protector</button>
+                    <button onclick="filterByClass('Rebel')" class="class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all" data-class="Rebel">Rebel</button>
+                </div>
+            </div>
+
+            <!-- Card Grid -->
+            <div id="card-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Dynamically Rendered via JS -->
+            </div>
+        </section>
+
+        <!-- ================= BUILDER VIEW ================= -->
+        <section id="view-builder" class="hidden space-y-6">
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                <!-- Deck Overview & Constraints -->
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="glass-panel p-6 rounded-2xl space-y-4">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-4">
+                            <h2 class="text-lg font-bold text-white">Statistik Deck</h2>
+                            <button onclick="clearDeck()" class="text-xs text-rose-400 hover:text-rose-300 font-semibold transition-colors">Reset Deck</button>
+                        </div>
+
+                        <!-- Card Count Meter -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5 font-medium">
+                                <span class="text-slate-300">Total Kartu</span>
+                                <span id="builder-count-text" class="text-rose-400 font-bold">0 / 30</span>
+                            </div>
+                            <div class="w-full bg-slate-900 rounded-full h-2.5 overflow-hidden border border-slate-800">
+                                <div id="builder-progress-bar" class="bg-rose-600 h-2.5 transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Class Limit Tracker -->
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5 font-medium">
+                                <span class="text-slate-300">Batas Kelas (Maks. 2)</span>
+                                <span id="builder-class-text" class="text-slate-400 font-bold">0 / 2 Kelas</span>
+                            </div>
+                            <div id="class-list-container" class="space-y-2 mt-2">
+                                <!-- Dynamic class badges -->
+                            </div>
+                        </div>
+
+                        <!-- Validation Status -->
+                        <div id="validation-box" class="p-3.5 rounded-xl border bg-slate-900/60 border-slate-800 text-xs space-y-1">
+                            <p class="font-semibold text-slate-200">Status Aturan:</p>
+                            <p id="validation-msg" class="text-amber-400">Deck harus berisi tepat 30 kartu dari maksimal 2 kelas.</p>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="grid grid-cols-2 gap-2 pt-2">
+                            <button onclick="exportDeck()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition-all border border-slate-700">Export Deck</button>
+                            <button onclick="importDeckPrompt()" class="w-full bg-slate-800 hover:bg-slate-700 text-slate-200 py-2.5 rounded-xl text-xs font-semibold transition-all border border-slate-700">Import Deck</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Deck List Content -->
+                <div class="lg:col-span-2 space-y-4">
+                    <div class="glass-panel p-6 rounded-2xl min-h-[500px] flex flex-col">
+                        <div class="flex items-center justify-between mb-4 border-b border-slate-800 pb-4">
+                            <h2 class="text-lg font-bold text-white">Daftar Kartu dalam Deck</h2>
+                            <span class="text-xs text-slate-400">Aturan: 2 Common, 1 Rare per jenis kartu</span>
+                        </div>
+                        <div id="deck-items-container" class="space-y-2 flex-grow overflow-y-auto max-h-[600px] pr-2">
+                            <!-- Empty State -->
+                            <div class="flex flex-col items-center justify-center h-64 text-slate-500 space-y-2">
+                                <svg class="w-12 h-12 stroke-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                                <p class="text-sm font-medium">Deck kamu masih kosong. Tambahkan kartu dari menu Katalog!</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ================= GLOSSARY VIEW ================= -->
+        <section id="view-glossary" class="hidden space-y-6">
+            <div class="glass-panel p-6 lg:p-8 rounded-2xl">
+                <h2 class="text-xl font-bold text-white mb-2">Glosarium Kata Kunci Showdown</h2>
+                <p class="text-sm text-slate-400 mb-6">Penjelasan istilah-istilah penting yang digunakan dalam efek kartu.</p>
+                <div id="glossary-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <!-- Rendered via JS -->
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-slate-900 bg-slate-950 py-6 text-center text-xs text-slate-500">
+        <p>Showdown Unofficial Web App • Diterjemahkan & Dioptimalkan ke Bahasa Indonesia</p>
+    </footer>
+
+    <!-- App Logic Script -->
+    <script>
+        const catalogData = {
+            "glossary": [
+                {"term": "All-in", "meaning": "Efek yang berlaku hanya jika kamu tidak memiliki kartu aksi lain di tangan"},
+                {"term": "Backfire", "meaning": "50% kemungkinan efek samping negatif terjadi"},
+                {"term": "Chips", "meaning": "Poin yang diperebutkan pemain, yang pertama mencapai 100 memenangkan permainan"},
+                {"term": "Combo", "meaning": "Efek hanya berlaku jika kamu telah menggunakan kartu aksi pada tahap ini"},
+                {"term": "Cycle", "meaning": "Buang satu kartu dan ambil kartu pengganti dari bagian atas dek"},
+                {"term": "Face card", "meaning": "Kartu Raja (King), Ratu (Queen), atau Jack"},
+                {"term": "Lock", "meaning": "Kartu yang terkunci tidak dapat dimainkan, dipilih untuk efek apa pun, atau berpindah zona"},
+                {"term": "No-Show", "meaning": "Efek yang aktif setiap kali lawanmu melakukan fold"},
+                {"term": "Rank", "meaning": "Tingkatan kartu poker yang menentukan kekuatannya"},
+                {"term": "Tax", "meaning": "Efek hanya berlaku jika lawan memiliki 25 cip lebih banyak darimu"},
+                {"term": "Unlock", "meaning": "Menghapus status Lock (Terkunci)"},
+                {"term": "Wild", "meaning": "Kartu Wild dapat merepresentasikan kartu dengan rank dan simbol apa pun untuk kombinasi terbaik"}
+            ],
+            "cards": [
+                {"name": "Ante Up", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 5, "text": "Tax: Your opponent puts 10 chips into the pot.", "keywords": ["Chips", "Tax"]},
+                {"name": "Debt Collector", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 2, "text": "Steal a random negative value action card from your opponent.", "keywords": []},
+                {"name": "Document Dump", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 0, "text": "-1 rank to your opponent's pocket cards. Tax: +3 rank to your pocket cards.", "keywords": ["Rank", "Tax"]},
+                {"name": "Dry Board", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "River", "pot": 7, "text": "Players can‘t make Straight or Flush combinations.", "keywords": []},
+                {"name": "Expose Weakness", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 5, "text": "-3 rank to your opponent’s higher pocket card. Reveal it.", "keywords": ["Rank"]},
+                {"name": "Fatal Fortune", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": 0, "text": "Steal 2 random action cards from your opponent. Set your opponent's chips to 99.", "keywords": ["Chips"]},
+                {"name": "Higher Authority", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 1, "text": "Steal 6 chips for each of your opponent's pocket Face cards.", "keywords": ["Face card", "Chips"]},
+                {"name": "House Cut", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 4, "text": "If your opponent has no action cards, steal half of the pot.", "keywords": []},
+                {"name": "Inspection", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "River", "pot": -1, "text": "If your opponent has 4 or more action cards, steal 2 random River action cards from your opponent’s deck.", "keywords": []},
+                {"name": "Overprotect", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 4, "text": "-1 rank to an opponent's pocket card at random. Lock both.", "keywords": ["Lock", "Rank"]},
+                {"name": "Paper Trail", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 2, "text": "If your opponent's combination is Two Pair or better, draw 2 action cards.", "keywords": []},
+                {"name": "Pot Control", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 4, "text": "Your opponent can't get over 99 chips.", "keywords": ["Chips"]},
+                {"name": "Red Tape", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": 0, "text": "Lock all action cards until the end of the stage.", "keywords": ["Lock"]},
+                {"name": "Rich Get Richer", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 1, "text": "Each player draws an action card for each pocket card of rank [8] or above.", "keywords": ["Rank"]},
+                {"name": "Spiraling Debt", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": -4, "text": "If you lose showdown, get Spiraling Debt.", "keywords": []},
+                {"name": "Stained Money", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "River", "pot": -4, "text": "Showdown winner discards all action cards.", "keywords": []},
+                {"name": "Steal", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": -2, "text": "Steal 2 chips for each card your opponent played this stage. Repeat if played on the River.", "keywords": ["Chips"]},
+                {"name": "Tax Burden", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": -1, "text": "If your opponent has more chips than you, gain chips equal to half the difference.", "keywords": ["Chips"]},
+                {"name": "Thought Police", "class": "Bureaucrat", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 2, "text": "Steal a random action card from your opponent's deck. Tax: Repeat.", "keywords": ["Tax"]},
+                {"name": "Wear Down", "class": "Bureaucrat", "rarity": "Common", "copies": 2, "stage": "Any", "pot": -1, "text": "-2 rank to an opponent's pocket card at random. Tax: Repeat.", "keywords": ["Rank", "Tax"]},
+                {"name": "Ace in Sleeve", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "River", "pot": 2, "text": "Replace your higher pocket card with A♥.", "keywords": []},
+                {"name": "Bottom Dealing", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 3, "text": "Look at the bottom 3 cards of the deck. Swap up to 3 board cards with them. Discard the rest.", "keywords": []},
+                {"name": "Cardjacking", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 2, "text": "Swap your lower pocket card with your opponent's higher pocket card.", "keywords": []},
+                {"name": "Change of Heart", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 1, "text": "Replace a board card with a Heart card of the same Rank. If it was an Ace, draw an action card.", "keywords": ["Rank"]},
+                {"name": "Cheat", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "River", "pot": -3, "text": "Swap a pocket card with a board card.", "keywords": []},
+                {"name": "Chromatic Shift", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "River", "pot": -1, "text": "Cycle your pocket cards that aren't ♥.", "keywords": ["Cycle"]},
+                {"name": "Cupid", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 1, "text": "Draw an action card for each ♥ card on the board and gain that many chips.", "keywords": ["Chips"]},
+                {"name": "Dirty Hands", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "River", "pot": 5, "text": "Look at the top 3 cards of your deck. Draw all that have negative value.", "keywords": []},
+                {"name": "Disarming Gaze", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 1, "text": "Choose an action card and swap it with an opponent's action card at random.", "keywords": []},
+                {"name": "Lockpick", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 5, "text": "Unlock all cards. Cycle all cards unlocked this way.", "keywords": ["Lock", "Unlock", "Cycle"]},
+                {"name": "Marked Card", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": -1, "text": "Replace a board card with A♥.", "keywords": []},
+                {"name": "One Time!", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 7, "text": "When dealing the 4th board card, choose it from the top 7 cards of the deck. Your opponent can't play One Time!", "keywords": []},
+                {"name": "Out of Sight", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 2, "text": "Swap a pocket or a board card with the top card of the deck.", "keywords": []},
+                {"name": "Rude Exchange", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 0, "text": "Swap your lower pocket card with your opponent's lower pocket card.", "keywords": []},
+                {"name": "Scarlet Deck", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 4, "text": "Shuffle 30 random ♥ cards into the deck.", "keywords": []},
+                {"name": "Second Thoughts", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": -3, "text": "Play a copy of the last card your opponent played this stage.", "keywords": []},
+                {"name": "Seeing Red", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 0, "text": "Look at the top card of the deck. If it's a ♥, draw an action card. Otherwise, gain 5 chips.", "keywords": ["Chips"]},
+                {"name": "Sleight of Hand", "class": "Cheater", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 1, "text": "Swap a board card with your opponent's lower pocket card.", "keywords": []},
+                {"name": "Sneak Out", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": -2, "text": "If your opponent's combination is a Straight or better, the pot becomes 0. Draw an action card and fold.", "keywords": []},
+                {"name": "Sweetheart Scam", "class": "Cheater", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 3, "text": "If there are 3 or more Heart cards on the board, play Chromatic Shift and Ace in Sleeve.", "keywords": []},
+                {"name": "Card Payment", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 0, "text": "Cycle a random pocket card. Draw an action card if played Preflop.", "keywords": ["Cycle"]},
+                {"name": "Cinch", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 1, "text": "Your action cards can't Backfire. Get a random action card with Backfire.", "keywords": ["Backfire"]},
+                {"name": "Cold Deck", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 4, "text": "Discard all [A], [K], [Q], [J] rank cards from the deck.", "keywords": ["Rank"]},
+                {"name": "Comeback Chance", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": -1, "text": "Get a Roulette. Backfire: Replace your Flop action cards with Windfalls.", "keywords": ["Backfire"]},
+                {"name": "Cyclone", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "River", "pot": 0, "text": "Cycle all board cards. Backfire: Lose 7 chips.", "keywords": ["Chips", "Cycle", "Backfire"]},
+                {"name": "Gamble", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "River", "pot": 1, "text": "Draw 2 action cards. Backfire: Lock your action cards.", "keywords": ["Lock", "Backfire"]},
+                {"name": "Gameplan", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "River", "pot": 2, "text": "Replace your pocket cards with random, suited Number cards.", "keywords": []},
+                {"name": "Jackpot", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 7, "text": "If your showdown combination includes a Pair of Sevens, you win the pot.", "keywords": []},
+                {"name": "Maniac", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 20, "text": "Backfire: Reveal a random pocket card.", "keywords": ["Backfire"]},
+                {"name": "Misdeal", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "River", "pot": -6, "text": "Each player Cycles both pocket cards.", "keywords": ["Cycle"]},
+                {"name": "Numerology", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 0, "text": "If there are only number cards on board, play Jackpot, Wild Ducks and Gameplan.", "keywords": ["Wild"]},
+                {"name": "Over/Under", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "River", "pot": -5, "text": "For each board card, randomly give it +1 or -1 rank.", "keywords": ["Rank"]},
+                {"name": "Overplay", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "River", "pot": 7, "text": "+1 rank to a pocket card. Backfire: -2 rank to a pocket card at random.", "keywords": ["Rank", "Backfire"]},
+                {"name": "Roll the Dice", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 1, "text": "Replace up to 1 board card and up to 1 pocket card with random Number cards.", "keywords": []},
+                {"name": "Roulette", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 0, "text": "Cycle a random Board card. Your opponent Cycles a random pocket card and discards a random Action card.", "keywords": ["Cycle"]},
+                {"name": "Stroke of Luck", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": -1, "text": "Replace a random pocket card with a copy of a random board card.", "keywords": []},
+                {"name": "Superstition", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 6, "text": "No-show: Your opponent discards a random action card and loses 6 chips.", "keywords": ["No-Show", "Chips"]},
+                {"name": "Wheel of Fortune", "class": "Gambler", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 3, "text": "Replace the board cards with random Number cards.", "keywords": []},
+                {"name": "Wild Ducks", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 2, "text": "Your [2] rank pocket cards become Wild in showdown.", "keywords": ["Rank", "Wild"]},
+                {"name": "Windfall", "class": "Gambler", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": -3, "text": "Randomly distribute 20 chips between players.", "keywords": ["Chips"]},
+                {"name": "Atomic Shift", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 1, "text": "+1 rank to your lower pocket card. Repeat whenever you play an action card.", "keywords": ["Rank"]},
+                {"name": "Card Cam", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 1, "text": "Your opponent reveals a random pocket card. Draw an action card if it shares a suit or rank with the other.", "keywords": ["Rank"]},
+                {"name": "Chain Reaction", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": -1, "text": "Combo: Get 3 random Preflop action cards.", "keywords": ["Combo"]},
+                {"name": "Compression", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 2, "text": "-1 rank to the highest board card. Repeat for each action card you played this stage.", "keywords": ["Rank"]},
+                {"name": "Countdown", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "River", "pot": 8, "text": "Replace your pocket cards with 10♣9♠.", "keywords": []},
+                {"name": "Data Mining", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": -2, "text": "Draw the highest value action card from your deck.", "keywords": []},
+                {"name": "Degradation", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "River", "pot": -1, "text": "-1 rank to your pocket cards.", "keywords": ["Rank"]},
+                {"name": "Eureka", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 3, "text": "If you played 6 or more other action cards, get 3 random River action cards.", "keywords": []},
+                {"name": "Fading Echo", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 7, "text": "Replace your lower pocket card with a copy of the other and give it -1 rank.", "keywords": ["Rank"]},
+                {"name": "Fibonacci", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 0, "text": "Replace 4 random board cards with 2♠3♥5♣8♦.", "keywords": []},
+                {"name": "High Hand Bonus", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "River", "pot": 5, "text": "If the winning showdown combination is a Straight or better, the winner gains 10 extra chips. Combo: Get a random River action card.", "keywords": ["Chips", "Combo"]},
+                {"name": "Law of Averages", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 2, "text": "Replace the Highest board card with 8♦. Combo: Replace the lowest board card with 7♥.", "keywords": ["Combo"]},
+                {"name": "Low Blow", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Any", "pot": -2, "text": "Reveal a pocket card. Cycle all board cards with higher rank.", "keywords": ["Rank", "Cycle"]},
+                {"name": "Magnetize", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 0, "text": "Choose a board card. Replace the others with its copy, randomize their suits and give them -1 and +1 rank.", "keywords": ["Rank"]},
+                {"name": "Noise Filtering", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 1, "text": "Unlock all board cards. Cycle all paired and [A] rank board cards.", "keywords": ["Lock", "Rank", "Unlock", "Cycle"]},
+                {"name": "Prototype", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 4, "text": "-2 rank to a board card. If you win the pot, get Prototype.", "keywords": ["Rank"]},
+                {"name": "Read", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 3, "text": "Your opponent reveals all action cards that can be played this stage. Draw an action card if there's 3 or more of them.", "keywords": []},
+                {"name": "Surge", "class": "Inventor", "rarity": "Rare", "copies": 1, "stage": "River", "pot": -4, "text": "+1 rank to a board card.", "keywords": ["Rank"]},
+                {"name": "Symbiosis", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 4, "text": "Put a copy of a board card with +1 rank on top of the deck.", "keywords": ["Rank"]},
+                {"name": "Unexpected Result", "class": "Inventor", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 2, "text": "-1 rank to a board card. Draw an action card if you don't have a Pair.", "keywords": ["Rank"]},
+                {"name": "Armored Transport", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 0, "text": "If there are 20 or more chips in the pot, draw 2 action cards.", "keywords": ["Chips"]},
+                {"name": "Black Jack", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 4, "text": "Replace your pocket cards with J♠ and a random Face card.", "keywords": ["Face card"]},
+                {"name": "Card Protector", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 7, "text": "Lock your pocket cards. If you win showdown, get Card Protector.", "keywords": ["Lock"]},
+                {"name": "Court Order", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 3, "text": "Replace a pocket card with a random Face card.", "keywords": ["Face card"]},
+                {"name": "Custody Battle", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": 4, "text": "If there are 3 or more Face cards on the board, play Black Jack and VIP.", "keywords": ["Face card"]},
+                {"name": "Fantasy Land", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 5, "text": "Replace your pocket cards with Q♠Q♥.", "keywords": []},
+                {"name": "Favoritism", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 2, "text": "Lock all River action cards. No-show: Gain 5 chips.", "keywords": ["Lock", "No-Show", "Chips"]},
+                {"name": "Final Notice", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": -1, "text": "Each player can only play 1 more action card.", "keywords": []},
+                {"name": "Hot Deck", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 4, "text": "Shuffle 30 random Face cards into the deck.", "keywords": ["Face card"]},
+                {"name": "Inner Circle", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 2, "text": "Put 2 random face cards on top of the deck.", "keywords": ["Face card"]},
+                {"name": "Lockdown", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": -2, "text": "Lock all pocket and board cards.", "keywords": ["Lock"]},
+                {"name": "Pocket Mirror", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 3, "text": "Replace your lower pocket card with a copy of the other.", "keywords": []},
+                {"name": "Poker Faces", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "River", "pot": 1, "text": "Draw an action card for each unique Face card rank among your pocket and board cards.", "keywords": ["Face card", "Rank"]},
+                {"name": "Promote", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 4, "text": "Replace your pocket Number cards with random Face cards. Lock your pocket cards.", "keywords": ["Lock", "Face card"]},
+                {"name": "Savor the Moment", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 8, "text": "Lock a board card.", "keywords": ["Lock"]},
+                {"name": "Split Vision", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": -2, "text": "If you have a Pair, draw 2 action cards.", "keywords": []},
+                {"name": "Take the Crown", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "River", "pot": 1, "text": "Replace a board card with a random Face card. Lock it.", "keywords": ["Lock", "Face card"]},
+                {"name": "Three Wise Men", "class": "Protector", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 3, "text": "Replace the board cards with K♠K♥K♦.", "keywords": []},
+                {"name": "Trap", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 0, "text": "If you win showdown, your opponent discards all action cards. No-show: Gain 6 chips.", "keywords": ["No-Show", "Chips"]},
+                {"name": "VIP", "class": "Protector", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 2, "text": "Lock the two highest board cards and one of your opponent's action cards at random.", "keywords": ["Lock"]},
+                {"name": "All-In", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 4, "text": "Get a random action card with All-in when you have no action cards. (only once)", "keywords": ["All-in"]},
+                {"name": "Brick", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": 1, "text": "Replace a board card with a Brick.", "keywords": []},
+                {"name": "Chip Dumping", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": -2, "text": "If you have fewer action cards than your opponent, draw cards equal to the difference. Your opponent gains that many chips.", "keywords": ["Chips"]},
+                {"name": "Clean Slate", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 2, "text": "Both players replace all action cards with random Universal action cards.", "keywords": []},
+                {"name": "Drought", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 1, "text": "Discard all River cards from both players' decks.", "keywords": []},
+                {"name": "Eye for an Eye", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 1, "text": "Each player replaces a random pocket card with a Brick.", "keywords": []},
+                {"name": "Game Stop", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 7, "text": "All-in: Go directly to showdown after the Flop. (players can still fold)", "keywords": ["All-in"]},
+                {"name": "Hero Call", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": 0, "text": "Discard your action cards. If you win the pot, gain 20 extra chips, plus 5 chips for each card discarded this way.", "keywords": ["Chips"]},
+                {"name": "High Five", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": 5, "text": "Replace a board card and a random pocket card with 5♦. All-in: Your opponent discards a random action card.", "keywords": ["All-in"]},
+                {"name": "Hostile Territory", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 2, "text": "Your opponent discards all Universal action cards.", "keywords": []},
+                {"name": "Jailbreak", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "River", "pot": 2, "text": "Unlock all pocket and board cards. All-in: Your opponent replaces a random pocket card with a Brick.", "keywords": ["Lock", "Unlock"]},
+                {"name": "Last Laugh", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "Any", "pot": 5, "text": "If there are no action cards in your deck, replace your opponent's pocket cards with Bricks.", "keywords": []},
+                {"name": "Mulligan", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 2, "text": "Cycle up to 1 pocket card and up to 1 action card.", "keywords": ["Cycle"]},
+                {"name": "Punching Down", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 3, "text": "Your opponent discards the lowest value action card.", "keywords": []},
+                {"name": "Revolution", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Any", "pot": 6, "text": "Replace all Face cards with Bricks. Discard a random action card.", "keywords": ["Face card"]},
+                {"name": "Salvaged Goods", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Flop", "pot": 0, "text": "Discard any number of action cards. Get that many Flop action cards plus 1.", "keywords": []},
+                {"name": "Secret Stash", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "PreFlop", "pot": 0, "text": "Draw an action card at the beginning of the Flop and River stages.", "keywords": []},
+                {"name": "Silver Bullet", "class": "Rebel", "rarity": "Rare", "copies": 1, "stage": "Flop", "pot": -1, "text": "Choose up to 1 action card and discard the rest. Your opponent discards 2 random action cards.", "keywords": []},
+                {"name": "Wash Ashore", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "PreFlop", "pot": 2, "text": "Get a random Universal or River action card at the beginning of the River stage. No-show: Gain 4 chips.", "keywords": ["No-Show", "Chips"]},
+                {"name": "Wasteland", "class": "Rebel", "rarity": "Common", "copies": 2, "stage": "Any", "pot": -1, "text": "Replace 2 random board cards with bricks. Replace 1 more if played on the River.", "keywords": []}
+            ]
+        };
+
+        // Terjemahan deskripsi kartu manual ke Bahasa Indonesia untuk pengalaman maksimal
+        const translations = {
+            "Ante Up": "Pajak (Tax): Lawanmu memasukkan 10 cip ke dalam pot.",
+            "Debt Collector": "Curi 1 kartu aksi bernilai negatif acak dari lawanmu.",
+            "Document Dump": "-1 rank pada kartu tangan lawanmu. Pajak: +3 rank pada kartu tanganmu.",
+            "Dry Board": "Pemain tidak dapat membuat kombinasi Straight atau Flush.",
+            "Expose Weakness": "-3 rank pada kartu tangan lawan yang lebih tinggi. Ungkap kartu tersebut.",
+            "Fatal Fortune": "Curi 2 kartu aksi acak dari lawanmu. Atur cip lawanmu menjadi 99.",
+            "Higher Authority": "Curi 6 cip untuk setiap kartu tangan bergambar (Face card) milik lawanmu.",
+            "House Cut": "Jika lawanmu tidak memiliki kartu aksi, curi separuh dari isi pot.",
+            "Inspection": "Jika lawanmu memiliki 4 atau lebih kartu aksi, curi 2 kartu aksi River acak dari dek lawan.",
+            "Overprotect": "-1 rank pada kartu tangan lawan secara acak. Kunci keduanya.",
+            "Paper Trail": "Jika kombinasi lawanmu adalah Two Pair atau lebih baik, ambil 2 kartu aksi.",
+            "Pot Control": "Lawanmu tidak bisa mendapatkan lebih dari 99 cip.",
+            "Red Tape": "Kunci semua kartu aksi sampai akhir tahap ini.",
+            "Rich Get Richer": "Setiap pemain menarik satu kartu aksi untuk setiap kartu tangan ber-rank [8] atau lebih tinggi.",
+            "Spiraling Debt": "Jika kamu kalah dalam showdown, dapatkan Spiraling Debt.",
+            "Stained Money": "Pemenang showdown membuang semua kartu aksi.",
+            "Steal": "Curi 2 cip untuk setiap kartu yang dimainkan lawanmu pada tahap ini. Ulangi jika dimainkan di tahap River.",
+            "Tax Burden": "Jika lawanmu memiliki cip lebih banyak darimu, dapatkan cip sejumlah setengah dari selisihnya.",
+            "Thought Police": "Curi 1 kartu aksi acak dari dek lawan. Pajak: Ulangi.",
+            "Wear Down": "-2 rank pada kartu tangan lawan secara acak. Pajak: Ulangi.",
+            "Ace in Sleeve": "Ganti kartu tanganmu yang lebih tinggi dengan A♥.",
+            "Bottom Dealing": "Lihat 3 kartu terbawah dari dek. Tukar hingga 3 kartu papan dengan kartu tersebut. Buang sisanya.",
+            "Cardjacking": "Tukar kartu tanganmu yang lebih rendah dengan kartu tangan lawan yang lebih tinggi.",
+            "Change of Heart": "Ganti kartu papan dengan kartu Hati (♥) dengan rank sama. Jika As, ambil 1 kartu aksi.",
+            "Cheat": "Tukar kartu tangan dengan kartu papan.",
+            "Chromatic Shift": "Siklus kartu tanganmu yang bukan ♥.",
+            "Cupid": "Ambil 1 kartu aksi untuk setiap kartu ♥ di papan dan dapatkan cip sejumlah itu.",
+            "Dirty Hands": "Lihat 3 kartu teratas dek. Ambil semua kartu bernilai negatif.",
+            "Disarming Gaze": "Pilih satu kartu aksi dan tukar dengan kartu aksi lawan secara acak.",
+            "Lockpick": "Buka kunci semua kartu. Siklus semua kartu yang dibuka dengan cara ini.",
+            "Marked Card": "Ganti kartu papan dengan A♥.",
+            "One Time!": "Saat membagikan kartu papan ke-4, pilih dari 7 kartu teratas dek. Lawan tidak bisa memainkan One Time!",
+            "Out of Sight": "Tukar kartu tangan atau papan dengan kartu teratas dek.",
+            "Rude Exchange": "Tukar kartu tanganmu yang lebih rendah dengan kartu tangan lawan yang lebih rendah.",
+            "Scarlet Deck": "Kocok 30 kartu ♥ acak ke dalam dek.",
+            "Second Thoughts": "Mainkan salinan dari kartu terakhir yang dimainkan lawan pada tahap ini.",
+            "Seeing Red": "Lihat kartu teratas dek. Jika ♥, ambil 1 kartu aksi. Jika tidak, dapatkan 5 cip.",
+            "Sleight of Hand": "Tukar kartu papan dengan kartu tangan lawan yang lebih rendah.",
+            "Sneak Out": "Jika kombinasi lawan adalah Straight atau lebih baik, pot menjadi 0. Ambil 1 kartu aksi dan fold.",
+            "Sweetheart Scam": "Jika ada 3 atau lebih kartu Hati di papan, mainkan Chromatic Shift dan Ace in Sleeve.",
+            "Card Payment": "Siklus satu kartu tangan acak. Ambil 1 kartu aksi jika dimainkan Preflop.",
+            "Cinch": "Kartu aksimu tidak bisa Backfire. Dapatkan 1 kartu aksi acak dengan Backfire.",
+            "Cold Deck": "Buang semua kartu rank [A], [K], [Q], [J] dari dek.",
+            "Comeback Chance": "Dapatkan Roulette. Backfire: Ganti kartu aksi Flop dengan Windfall.",
+            "Cyclone": "Siklus semua kartu papan. Backfire: Kehilangan 7 cip.",
+            "Gamble": "Ambil 2 kartu aksi. Backfire: Kunci kartu aksimu.",
+            "Gameplan": "Ganti kartu tangan dengan kartu angka acak yang bersimbol sama (Suited).",
+            "Jackpot": "Jika kombinasi showdown mengandung Pair of Sevens, kamu memenangkan pot.",
+            "Maniac": "Backfire: Ungkap satu kartu tangan acak.",
+            "Misdeal": "Kedua pemain melakukan Siklus pada kedua kartu tangan.",
+            "Numerology": "Jika hanya ada kartu angka di papan, mainkan Jackpot, Wild Ducks, dan Gameplan.",
+            "Over/Under": "Untuk setiap kartu papan, berikan +1 atau -1 rank secara acak.",
+            "Overplay": "+1 rank ke kartu tangan. Backfire: -2 rank ke kartu tangan secara acak.",
+            "Roll the Dice": "Ganti maksimal 1 kartu papan dan 1 kartu tangan dengan kartu angka acak.",
+            "Roulette": "Siklus satu kartu papan acak. Lawan siklus 1 kartu tangan acak dan buang 1 kartu aksi.",
+            "Stroke of Luck": "Ganti satu kartu tangan acak dengan salinan dari kartu papan acak.",
+            "Superstition": "No-show: Lawan membuang 1 kartu aksi acak dan kehilangan 6 cip.",
+            "Wheel of Fortune": "Ganti kartu papan dengan kartu angka acak.",
+            "Wild Ducks": "Kartu tangan rank [2] milikmu menjadi Wild saat showdown.",
+            "Windfall": "Bagikan 20 cip secara acak di antara pemain.",
+            "Atomic Shift": "+1 rank ke kartu tangan yang lebih rendah. Ulangi saat memainkan kartu aksi.",
+            "Card Cam": "Lawan mengungkapkan kartu tangan acak. Ambil 1 kartu aksi jika bersimbol atau rank sama.",
+            "Chain Reaction": "Combo: Dapatkan 3 kartu aksi Preflop acak.",
+            "Compression": "-1 rank ke kartu papan tertinggi. Ulangi untuk setiap kartu aksi yang dimainkan.",
+            "Countdown": "Ganti kartu tanganmu dengan 10♣9♠.",
+            "Data Mining": "Ambil kartu aksi bernilai tertinggi dari dekomu.",
+            "Degradation": "-1 rank ke kartu tanganmu.",
+            "Eureka": "Jika telah memainkan 6 atau lebih kartu aksi lain, dapatkan 3 kartu aksi River acak.",
+            "Fading Echo": "Ganti kartu tangan lebih rendah dengan salinan kartu lain dan berikan -1 rank.",
+            "Fibonacci": "Ganti 4 kartu papan acak dengan 2♠3♥5♣8♦.",
+            "High Hand Bonus": "Jika kombinasi menang Straight atau lebih baik, pemenang mendapat 10 cip ekstra. Combo: Dapatkan 1 kartu aksi River acak.",
+            "Law of Averages": "Ganti kartu papan tertinggi dengan 8♦. Combo: Ganti kartu papan terendah dengan 7♥.",
+            "Low Blow": "Ungkap kartu tangan. Siklus semua kartu papan dengan rank lebih tinggi.",
+            "Magnetize": "Pilih kartu papan. Ganti yang lain dengan salinannya, acak simbol, dan berikan -1 dan +1 rank.",
+            "Noise Filtering": "Buka kunci semua kartu papan. Siklus semua kartu berpasangan dan rank [A].",
+            "Prototype": "-2 rank ke kartu papan. Jika memenangkan pot, dapatkan Prototype kembali.",
+            "Read": "Lawan mengungkapkan semua kartu aksi yang bisa dimainkan tahap ini. Ambil 1 kartu aksi jika ada 3+.",
+            "Surge": "+1 rank ke kartu papan.",
+            "Symbiosis": "Letakkan salinan kartu papan dengan +1 rank di atas dek.",
+            "Unexpected Result": "-1 rank ke kartu papan. Ambil 1 kartu aksi jika tidak memiliki Pair.",
+            "Armored Transport": "Jika ada 20 cip atau lebih di pot, ambil 2 kartu aksi.",
+            "Black Jack": "Ganti kartu tanganmu dengan J♠ dan Face card acak.",
+            "Card Protector": "Kunci kartu tanganmu. Jika memenangkan showdown, dapatkan Card Protector.",
+            "Court Order": "Ganti kartu tangan dengan Face card acak.",
+            "Custody Battle": "Jika ada 3 atau lebih Face card di papan, mainkan Black Jack dan VIP.",
+            "Fantasy Land": "Ganti kartu tanganmu dengan Q♠Q♥.",
+            "Favoritism": "Kunci semua kartu aksi River. No-show: Dapatkan 5 cip.",
+            "Final Notice": "Setiap pemain hanya dapat memainkan 1 kartu aksi lagi.",
+            "Hot Deck": "Kocok 30 Face card acak ke dalam dek.",
+            "Inner Circle": "Letakkan 2 Face card acak di atas dek.",
+            "Lockdown": "Kunci semua kartu tangan dan papan.",
+            "Pocket Mirror": "Ganti kartu tangan yang lebih rendah dengan salinan kartu lainnya.",
+            "Poker Faces": "Ambil 1 kartu aksi untuk setiap rank Face card unik di tangan dan papan.",
+            "Promote": "Ganti kartu angka di tangan dengan Face card acak. Kunci kartu tangan.",
+            "Savor the Moment": "Kunci satu kartu papan.",
+            "Split Vision": "Jika memiliki Pair, ambil 2 kartu aksi.",
+            "Take the Crown": "Ganti kartu papan dengan Face card acak. Kunci kartu tersebut.",
+            "Three Wise Men": "Ganti kartu papan dengan K♠K♥K♦.",
+            "Trap": "Jika memenangkan showdown, lawan membuang semua kartu aksi. No-show: Dapatkan 6 cip.",
+            "VIP": "Kunci 2 kartu papan tertinggi dan 1 kartu aksi lawan secara acak.",
+            "All-In": "Dapatkan kartu aksi dengan All-in saat tidak punya kartu aksi (hanya sekali).",
+            "Brick": "Ganti satu kartu papan dengan Brick.",
+            "Chip Dumping": "Jika jumlah kartu aksi lebih sedikit dari lawan, ambil kartu sejumlah selisihnya. Lawan mendapat cip.",
+            "Clean Slate": "Kedua pemain mengganti semua kartu aksi dengan kartu aksi Universal acak.",
+            "Drought": "Buang semua kartu River dari dek kedua pemain.",
+            "Eye for an Eye": "Setiap pemain mengganti satu kartu tangan acak dengan Brick.",
+            "Game Stop": "All-in: Langsung ke showdown setelah Flop (pemain masih bisa fold).",
+            "Hero Call": "Buang kartu aksi. Jika memenangkan pot, dapatkan 20 cip ekstra ditambah 5 cip per kartu yang dibuang.",
+            "High Five": "Ganti kartu papan dan kartu tangan acak dengan 5♦. All-in: Lawan membuang 1 kartu aksi acak.",
+            "Hostile Territory": "Lawan membuang semua kartu aksi Universal.",
+            "Jailbreak": "Buka kunci semua kartu tangan dan papan. All-in: Lawan mengganti kartu tangan acak dengan Brick.",
+            "Last Laugh": "Jika tidak ada kartu aksi di dek, ganti kartu tangan lawan dengan Brick.",
+            "Mulligan": "Siklus maksimal 1 kartu tangan dan 1 kartu aksi.",
+            "Punching Down": "Lawan membuang kartu aksi bernilai terendah.",
+            "Revolution": "Ganti semua Face card dengan Brick. Buang 1 kartu aksi acak.",
+            "Salvaged Goods": "Buang sejumlah kartu aksi. Dapatkan kartu aksi Flop sejumlah itu ditambah 1.",
+            "Secret Stash": "Ambil kartu aksi di awal tahap Flop dan River.",
+            "Silver Bullet": "Pilih maksimal 1 kartu aksi dan buang sisanya. Lawan membuang 2 kartu aksi acak.",
+            "Wash Ashore": "Dapatkan kartu aksi Universal atau River di awal River. No-show: Dapatkan 4 cip.",
+            "Wasteland": "Ganti 2 kartu papan acak dengan brick. Ganti 1 lagi jika dimainkan di River."
+        };
+
+        // State Aplikasi
+        let currentFilterClass = 'All';
+        let searchQuery = '';
+        let userDeck = {}; // Format: { "Ante Up": count }
+
+        // Inisialisasi Aplikasi
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCatalog();
+            renderGlossary();
+            updateDeckUI();
+        });
+
+        // Tab Switching
+        function switchTab(tabId) {
+            ['catalog', 'builder', 'glossary'].forEach(t => {
+                document.getElementById(`view-${t}`).classList.add('hidden');
+                document.getElementById(`tab-${t}`).className = "px-5 py-2 rounded-lg text-sm font-semibold transition-all text-slate-400 hover:text-white";
+            });
+            document.getElementById(`view-${tabId}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabId}`).className = "px-5 py-2 rounded-lg text-sm font-semibold transition-all bg-rose-600 text-white shadow-md";
+        }
+
+        // Render Katalog Kartu
+        function renderCatalog() {
+            const grid = document.getElementById('card-grid');
+            grid.innerHTML = '';
+
+            const filtered = catalogData.cards.filter(card => {
+                const matchesClass = currentFilterClass === 'All' || card.class === currentFilterClass;
+                const matchesSearch = card.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                      card.text.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesClass && matchesSearch;
+            });
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-16 text-center text-slate-500 text-sm">Tidak ada kartu yang ditemukan.</div>`;
+                return;
+            }
+
+            filtered.forEach(card => {
+                const descID = translations[card.name] || card.text;
+                const isRare = card.rarity === 'Rare';
+                const countInDeck = userDeck[card.name] || 0;
+                
+                const cardEl = document.createElement('div');
+                cardEl.className = "glass-panel p-5 rounded-2xl flex flex-col justify-between card-hover border border-slate-800 relative overflow-hidden group";
+                cardEl.innerHTML = `
+                    <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-br from-rose-500/10 to-transparent rounded-bl-full pointer-events-none"></div>
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div>
+                                <span class="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-slate-900 border border-slate-800 text-slate-400">${card.class}</span>
+                                <h3 class="text-base font-bold text-white mt-1.5">${card.name}</h3>
+                            </div>
+                            <span class="text-xs font-semibold px-2 py-0.5 rounded-full ${isRare ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-slate-800 text-slate-300'}">${card.rarity}</span>
+                        </div>
+                        
+                        <div class="flex items-center gap-2 text-xs text-slate-400 mb-3">
+                            <span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">Tahap: <strong class="text-slate-200">${card.stage}</strong></span>
+                            <span class="bg-slate-900 px-2 py-0.5 rounded border border-slate-800">Pot: <strong class="${card.pot > 0 ? 'text-emerald-400' : card.pot < 0 ? 'text-rose-400' : 'text-slate-200'}">${card.pot > 0 ? '+' + card.pot : card.pot}</strong></span>
+                        </div>
+
+                        <p class="text-xs text-slate-300 leading-relaxed mb-4">${descID}</p>
+                    </div>
+
+                    <div class="pt-3 border-t border-slate-800/80 flex items-center justify-between">
+                        <span class="text-[11px] text-slate-500">Maks: ${card.copies} salinan</span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs font-bold text-rose-400">${countInDeck > 0 ? `${countInDeck} di Deck` : ''}</span>
+                            <button onclick="addCardToDeck('${card.name}')" class="bg-rose-600 hover:bg-rose-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold shadow-lg shadow-rose-600/20 transition-all active:scale-95">
+                                + Tambah
+                            </button>
+                        </div>
+                    </div>
+                `;
+                grid.appendChild(cardEl);
+            });
+        }
+
+        // Filter Controller
+        function filterByClass(className) {
+            currentFilterClass = className;
+            document.querySelectorAll('.class-btn').forEach(btn => {
+                if (btn.getAttribute('data-class') === className) {
+                    btn.className = "class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white transition-all";
+                } else {
+                    btn.className = "class-btn px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 border border-slate-800 text-slate-300 hover:bg-slate-800 transition-all";
+                }
+            });
+            renderCatalog();
+        }
+
+        function filterCards() {
+            searchQuery = document.getElementById('search-input').value;
+            renderCatalog();
+        }
+
+        // Glosarium Render
+        function renderGlossary() {
+            const container = document.getElementById('glossary-grid');
+            container.innerHTML = '';
+            catalogData.glossary.forEach(item => {
+                const el = document.createElement('div');
+                el.className = "glass-panel p-4 rounded-xl border border-slate-800";
+                el.innerHTML = `
+                    <h4 class="text-sm font-bold text-rose-400 mb-1">${item.term}</h4>
+                    <p class="text-xs text-slate-300">${item.meaning}</p>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // --- DECK BUILDER LOGIC & VALIDATION ---
+        function getCardObj(cardName) {
+            return catalogData.cards.find(c => c.name === cardName);
+        }
+
+        function getTotalDeckCount() {
+            return Object.values(userDeck).reduce((a, b) => a + b, 0);
+        }
+
+        function getActiveDeckClasses() {
+            const classes = new Set();
+            for (let name in userDeck) {
+                if (userDeck[name] > 0) {
+                    const card = getCardObj(name);
+                    if (card) classes.add(card.class);
+                }
+            }
+            return Array.from(classes);
+        }
+
+        function addCardToDeck(cardName) {
+            const card = getCardObj(cardName);
+            if (!card) return;
+
+            const currentTotal = getTotalDeckCount();
+            if (currentTotal >= 30) {
+                alert("Deck sudah mencapai batas maksimal 30 kartu!");
+                return;
+            }
+
+            const currentCount = userDeck[cardName] || 0;
+            if (currentCount >= card.copies) {
+                alert(`Maksimal kartu ${card.name} dalam deck adalah ${card.copies} buah.`);
+                return;
+            }
+
+            // Validasi batas maksimal 2 kelas
+            const activeClasses = getActiveDeckClasses();
+            if (!activeClasses.includes(card.class) && activeClasses.length >= 2) {
+                alert("Deck hanya boleh berisi kartu dari maksimal 2 kelas yang berbeda!");
+                return;
+            }
+
+            userDeck[cardName] = currentCount + 1;
+            updateDeckUI();
+            renderCatalog();
+        }
+
+        function removeCardFromDeck(cardName) {
+            if (!userDeck[cardName]) return;
+            userDeck[cardName]--;
+            if (userDeck[cardName] <= 0) {
+                delete userDeck[cardName];
+            }
+            updateDeckUI();
+            renderCatalog();
+        }
+
+        function clearDeck() {
+            userDeck = {};
+            updateDeckUI();
+            renderCatalog();
+        }
+
+        function updateDeckUI() {
+            const totalCount = getTotalDeckCount();
+            const activeClasses = getActiveDeckClasses();
+
+            // Update Badges
+            document.getElementById('deck-count-badge').innerText = totalCount;
+            document.getElementById('builder-count-text').innerText = `${totalCount} / 30`;
+            document.getElementById('builder-progress-bar').style.width = `${(totalCount / 30) * 100}%`;
+            
+            document.getElementById('builder-class-text').innerText = `${activeClasses.length} / 2 Kelas`;
+
+            // Render Class Badges
+            const classContainer = document.getElementById('class-list-container');
+            classContainer.innerHTML = '';
+            if (activeClasses.length === 0) {
+                classContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Belum ada kelas dipilih</span>`;
+            } else {
+                activeClasses.forEach(cls => {
+                    const badge = document.createElement('span');
+                    badge.className = "inline-block bg-slate-900 border border-slate-800 text-slate-200 text-xs px-2.5 py-1 rounded-lg mr-1.5 font-semibold";
+                    badge.innerText = cls;
+                    classContainer.appendChild(badge);
+                });
+            }
+
+            // Validation Box
+            const valBox = document.getElementById('validation-box');
+            const valMsg = document.getElementById('validation-msg');
+            
+            let isValid = true;
+            let msg = "Deck valid dan siap digunakan dalam game!";
+
+            if (totalCount !== 30) {
+                isValid = false;
+                msg = `Deck belum lengkap (${totalCount}/30 kartu).`;
+            } else if (activeClasses.length > 2) {
+                isValid = false;
+                msg = `Melebihi batas maksimal 2 kelas (${activeClasses.length} kelas aktif).`;
+            }
+
+            if (isValid) {
+                valBox.className = "p-3.5 rounded-xl border bg-emerald-950/30 border-emerald-500/30 text-xs space-y-1";
+                valMsg.className = "text-emerald-400 font-semibold";
+            } else {
+                valBox.className = "p-3.5 rounded-xl border bg-rose-950/30 border-rose-500/30 text-xs space-y-1";
+                valMsg.className = "text-rose-400 font-semibold";
+            }
+            valMsg.innerText = msg;
+
+            // Render Deck Items List
+            const itemsContainer = document.getElementById('deck-items-container');
+            itemsContainer.innerHTML = '';
+
+            const deckKeys = Object.keys(userDeck);
+            if (deckKeys.length === 0) {
+                itemsContainer.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-64 text-slate-500 space-y-2">
+                        <svg class="w-12 h-12 stroke-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                        <p class="text-sm font-medium">Deck kamu masih kosong. Tambahkan kartu dari menu Katalog!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            deckKeys.forEach(cardName => {
+                const count = userDeck[cardName];
+                const card = getCardObj(cardName);
+                if (!card) return;
+
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between p-3 rounded-xl bg-slate-900/80 border border-slate-800/80";
+                row.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="w-7 h-7 rounded-lg bg-slate-800 flex items-center justify-center text-xs font-bold text-rose-400 border border-slate-700">${count}x</span>
+                        <div>
+                            <h4 class="text-sm font-bold text-white">${card.name}</h4>
+                            <p class="text-[11px] text-slate-400">${card.class} • <span class="text-slate-300">${card.rarity}</span></p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <button onclick="addCardToDeck('${card.name}')" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700">+</button>
+                        <button onclick="removeCardFromDeck('${card.name}')" class="w-7 h-7 rounded-lg bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-400 text-xs font-bold transition-all border border-slate-700 hover:border-rose-800">-</button>
+                    </div>
+                `;
+                itemsContainer.appendChild(row);
+            });
+        }
+
+        // Export / Import Deck
+        function exportDeck() {
+            const jsonStr = JSON.stringify(userDeck, null, 2);
+            navigator.clipboard.writeText(jsonStr).then(() => {
+                alert("Kode JSON Deck berhasil disalin ke clipboard!");
+            }).catch(() => {
+                prompt("Salin kode deck berikut:", jsonStr);
+            });
+        }
+
+        function importDeckPrompt() {
+            const input = prompt("Tempel (paste) kode JSON deck kamu di sini:");
+            if (!input) return;
+            try {
+                const parsed = JSON.parse(input);
+                if (typeof parsed === 'object' && parsed !== null) {
+                    userDeck = parsed;
+                    updateDeckUI();
+                    renderCatalog();
+                    alert("Deck berhasil diimpor!");
+                } else {
+                    alert("Format JSON tidak valid.");
+                }
+            } catch (e) {
+                alert("Gagal membaca kode JSON. Pastikan formatnya benar.");
+            }
+        }
+    </script>
+</body>
+</html>
